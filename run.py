@@ -2,6 +2,7 @@ import argparse
 from pathlib import Path
 from part1.data_loader import load_all
 from part1.data_analysis import run_data_analysis
+from part1.filter_split import run_filter_split
 
 
 def parse_args():
@@ -39,7 +40,9 @@ def main():
     if args.part == 1:
         print("\nPart 1: Running data analysis...")
         run_data_analysis(ratings, movies, users, outputs_dir)
-        print("\nPart 1: Data characterization and plots generated.")
+
+        print("\nPart 1: Running filtering & temporal split...")
+        train_df, val_df, test_df = run_filter_split(ratings, min_item_ratings=5, min_user_ratings=20)
 
 
 if __name__ == "__main__":
