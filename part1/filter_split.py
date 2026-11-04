@@ -1,22 +1,3 @@
-"""
-Temporal Splitting and Filtering Protocol
-
-Why Item Filtering (< 5 ratings):
-   - Items with fewer than 5 ratings are insufficient for things like KNN.
-   - In an 80/10/10 chronological split, an item with that little interactions will disappear
-     completly from one of the splits.
-   - Filtering items with < 5 interactions removes only 290 items and 580 interactions
-     Which is less than 0.06% of the data
-
-2. Why Per-User Chronological Split instead of Global Timestamp Cutoff:
-   - Over 90.5% of all ratings were in the first year (2000), while the rest where shared 
-     among the other 2 years. (Can be seen in the temporal_activity.png)
-   - A single global timestamp cutoff would severely distort evaluation as most users
-     who only interacted in the 2000 would have 0 interactions in the test data.
-   - Doing it Per-User sorts each user interaction by timestamp. Therefore no future interactions
-     will appear in the training data, and it guarantees each user will have test items.
-"""
-
 from pathlib import Path
 import numpy as np
 import pandas as pd
@@ -120,3 +101,23 @@ def run_filter_split(
         val_ratio=val_ratio,
     )
     return train_df, val_df, test_df
+
+
+"""
+Temporal Splitting and Filtering Protocol Theory..
+
+Why Item Filtering (< 5 ratings):
+   - Items with fewer than 5 ratings are insufficient for things like KNN.
+   - In an 80/10/10 chronological split, an item with that little interactions will disappear
+     completly from one of the splits.
+   - Filtering items with < 5 interactions removes only 290 items and 580 interactions
+     Which is less than 0.06% of the data
+
+2. Why Per-User Chronological Split instead of Global Timestamp Cutoff:
+   - Over 90.5% of all ratings were in the first year (2000), while the rest where shared 
+     among the other 2 years. (Can be seen in the temporal_activity.png)
+   - A single global timestamp cutoff would severely distort evaluation as most users
+     who only interacted in the 2000 would have 0 interactions in the test data.
+   - Doing it Per-User sorts each user interaction by timestamp. Therefore no future interactions
+     will appear in the training data, and it guarantees each user will have test items.
+"""
