@@ -28,8 +28,8 @@ def parse_args():
     return parser.parse_args()
 
 
-def run_baselines_evaluation(train_df: pd.DataFrame, eval_df: pd.DataFrame, catalog_items: list[int], eval_name: str = "Test"):
-    """Evaluates Popularity variants and Item-kNN on eval_df with progress bars."""
+def run_baselines_evaluation(train_df: pd.DataFrame, eval_df: pd.DataFrame, catalog_items: list[int], output_dir: Path, eval_name: str = "Test"):
+    """Evaluates Popularity variants and Item-kNN on eval_df and exports results matching official schema."""
     users_to_evaluate = sorted(eval_df["user_id"].unique())
     catalog_set = set(catalog_items)
     results = []
@@ -38,41 +38,65 @@ def run_baselines_evaluation(train_df: pd.DataFrame, eval_df: pd.DataFrame, cata
 
     # 1. Most Popular Variants
     popular_variants = [
-        ("MostPopular (All Interactions)", "all"),
-        ("MostPopular (Positive Only)", "positive_only"),
-        ("MostPopular (Damped Average)", "average_rating"),
+        ("Most Popular", "All interactions", "all"),
+        ("Most Popular", "Positive only (>= 4.0)", "positive_only"),
+        ("Most Popular", "Damped average (m=50)", "average_rating"),
     ]
 
-    for model_name, variant in popular_variants:
+    for model_name, setting_desc, variant in popular_variants:
         pop_model = MostPopularRecommender(variant=variant)
         pop_model.fit(train_df, catalog_items)
 
         recs = {}
-        for u in tqdm(users_to_evaluate, desc=f"Predicting: {model_name}"):
+        for u in tqdm(users_to_evaluate, desc=f"Predicting: {model_name} ({setting_desc})"):
             recs[u] = pop_model.recommend_for_user(u, top_k=10)
 
         metrics = evaluate_model(recs, eval_df, catalog_set, k=10)
-        metrics["Model"] = model_name
-        results.append(metrics)
+        results.append({
+            "Model": model_name,
+            "Variant / settings": setting_desc,
+            "Similarity": "-",
+            "k": "-",
+            "Precision@10": round(metrics["Precision@10"], 4),
+            "Recall@10": round(metrics["Recall@10"], 4),
+            "NDCG@10": round(metrics["NDCG@10"], 4),
+            "Catalogue coverage": f"{metrics['Coverage (%)']:.2f}%",
+        })
 
-    # 2. Item-based kNN (Cosine)
-    item_knn = ItemKNNRecommender(k_neighbors=20, metric="cosine")
+    # 2. Item-based kNN (Cosine, optimal k=100 from validation tuning)
+    item_knn = ItemKNNRecommender(k_neighbors=100, metric="cosine")
     print("\nFitting Item-based kNN (building sparse matrix & computing similarities)...")
     item_knn.fit(train_df, catalog_items)
 
     knn_recs = {}
-    for u in tqdm(users_to_evaluate, desc="Predicting: Item-kNN (k=20, Cosine)"):
+    for u in tqdm(users_to_evaluate, desc="Predicting: Item-kNN (k=100, Cosine)"):
         knn_recs[u] = item_knn.recommend_for_user(u, top_k=10)
 
     knn_metrics = evaluate_model(knn_recs, eval_df, catalog_set, k=10)
-    knn_metrics["Model"] = "Item-based kNN (k=20, Cosine)"
-    results.append(knn_metrics)
+    results.append({
+        "Model": "Item-based kNN",
+        "Variant / settings": "Neighborhood-based CF",
+        "Similarity": "Cosine",
+        "k": 100,
+        "Precision@10": round(knn_metrics["Precision@10"], 4),
+        "Recall@10": round(knn_metrics["Recall@10"], 4),
+        "NDCG@10": round(knn_metrics["NDCG@10"], 4),
+        "Catalogue coverage": f"{knn_metrics['Coverage (%)']:.2f}%",
+    })
 
-    # Format into a clean summary table
-    results_df = pd.DataFrame(results)[["Model", "Precision@10", "Recall@10", "NDCG@10", "Coverage (%)"]]
+    # Format into DataFrame matching official 'Part 1 - Baselines' schema
+    results_df = pd.DataFrame(results)[
+        ["Model", "Variant / settings", "Similarity", "k", "Precision@10", "Recall@10", "NDCG@10", "Catalogue coverage"]
+    ]
+
     print(f"\n==================== BASELINE RESULTS ({eval_name} Set) ====================")
     print(results_df.to_string(index=False))
     print("=======================================================================\n")
+
+    # Export machine-readable CSV to part1/outputs/
+    out_csv = output_dir / "results_part1.csv"
+    results_df.to_csv(out_csv, index=False)
+    print(f"Results successfully saved to: {out_csv.resolve()}\n")
 
     return results_df
 
@@ -102,7 +126,7 @@ def main():
 
         # Step 4: Run Baselines & Evaluation
         catalog_items = sorted(movies["item_id"].unique())
-        run_baselines_evaluation(train_df, test_df, catalog_items, eval_name="Test")
+        run_baselines_evaluation(train_df, test_df, catalog_items, outputs_dir, eval_name="Test")
 
 
 if __name__ == "__main__":

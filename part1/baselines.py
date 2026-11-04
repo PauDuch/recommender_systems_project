@@ -68,11 +68,12 @@ class ItemKNNRecommender:
         self.user_to_idx = {}
         self.item_to_idx = {}
         self.idx_to_item = {}
-        self.similarity_matrix = None
+        self.raw_similarity_matrix = None
+        self.topk_similarity_matrix = None
         self.R = None
 
     def fit(self, train_df: pd.DataFrame, catalog_items: list[int]):
-        """Builds sparse interaction matrix and computes top-k item similarity."""
+        """Builds sparse interaction matrix and computes full pairwise item similarities."""
         unique_users = sorted(train_df["user_id"].unique())
         unique_items = sorted(list(set(catalog_items)))
 
@@ -85,6 +86,7 @@ class ItemKNNRecommender:
         i_indices = train_df["item_id"].map(self.item_to_idx).values
         ratings = train_df["rating"].values.astype(np.float32)
 
+        # Standard Cosine uses raw ratings; Adjusted Cosine subtracts user mean
         if self.metric == "adjusted_cosine":
             user_means = train_df.groupby("user_id")["rating"].transform("mean").values
             ratings = ratings - user_means
@@ -93,22 +95,41 @@ class ItemKNNRecommender:
         n_items = len(self.item_to_idx)
         self.R = csr_matrix((ratings, (u_indices, i_indices)), shape=(n_users, n_items))
 
-        # Compute pairwise item similarity matrix (n_items x n_items)
-        sim = cosine_similarity(self.R.T, dense_output=False).tocsr()
-        sim.setdiag(0.0)
-        self.similarity_matrix = sim
+        # Compute full item-item similarity matrix (dense float32 for fast top-k pruning)
+        sim = cosine_similarity(self.R.T, dense_output=True).astype(np.float32)
+        np.fill_diagonal(sim, 0.0)
+        self.raw_similarity_matrix = sim
+        self.set_k(self.k_neighbors)
+
+    def set_k(self, k: int):
+        """Prunes similarity matrix to retain only top-k neighbors per item (Lecture 1.2, slide 7)."""
+        self.k_neighbors = k
+        n_items = self.raw_similarity_matrix.shape[0]
+        
+        # For each item column, keep only top-k positive similarities
+        pruned_sim = np.zeros_like(self.raw_similarity_matrix)
+        for j in range(n_items):
+            col = self.raw_similarity_matrix[:, j]
+            # Find indices of top-k largest similarities
+            topk_idx = np.argpartition(col, -k)[-k:]
+            # Only keep positive similarities
+            positive_mask = col[topk_idx] > 0
+            valid_idx = topk_idx[positive_mask]
+            pruned_sim[valid_idx, j] = col[valid_idx]
+
+        self.topk_similarity_matrix = csr_matrix(pruned_sim)
 
     def recommend_for_user(self, user_id: int, top_k: int = 10) -> list[int]:
-        """Returns top-K unseen items for a single user using item neighbors."""
+        """Returns top-K unseen items for a single user using strictly top-k item neighbors."""
         if user_id not in self.user_to_idx:
             return []
 
         u_idx = self.user_to_idx[user_id]
         seen_items = self.user_seen_items.get(user_id, set())
 
-        # Fast sparse dot product
+        # Fast sparse dot product: score_j = sum_{i in N_k(j)} r_{u,i} * sim(i, j)
         u_ratings = self.R[u_idx]
-        scores = u_ratings.dot(self.similarity_matrix).toarray().ravel()
+        scores = u_ratings.dot(self.topk_similarity_matrix).toarray().ravel()
 
         # Mask out already rated items
         for seen in seen_items:
@@ -116,7 +137,7 @@ class ItemKNNRecommender:
             if idx is not None:
                 scores[idx] = -np.inf
 
-        # argpartition is O(N) instead of O(N log N) full sort for speed
+        # argpartition for fast top-10 retrieval
         if len(scores) > top_k:
             candidate_indices = np.argpartition(scores, -top_k)[-top_k:]
             sorted_top_indices = candidate_indices[np.argsort(scores[candidate_indices])[::-1]]

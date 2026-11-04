@@ -1,0 +1,5 @@
+Model,Variant / settings,Similarity,k,Precision@10,Recall@10,NDCG@10,Catalogue coverage
+Most Popular,All interactions,-,-,0.0395,0.0447,0.0506,3.01%
+Most Popular,Positive only (>= 4.0),-,-,0.0402,0.0452,0.0514,3.17%
+Most Popular,Damped average (m=50),-,-,0.0233,0.0255,0.0296,2.16%
+Item-based kNN,Neighborhood-based CF,Cosine,100,0.0432,0.0656,0.0627,31.68%
