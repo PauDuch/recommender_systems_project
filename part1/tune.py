@@ -1,12 +1,17 @@
 import argparse
+import random
 import sys
 from pathlib import Path
+import numpy as np
+import pandas as pd
 
 # Add project root directory to Python path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from tqdm import tqdm
-import pandas as pd
+# Set fixed random seed
+RANDOM_SEED = 42
+random.seed(RANDOM_SEED)
+np.random.seed(RANDOM_SEED)
 
 from part1.data_loader import load_all
 from part1.filter_split import run_filter_split

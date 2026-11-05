@@ -34,6 +34,7 @@ recommender_systems_project/
 ## 2. Environment & Requirements
 
 - **Programming Language**: Python 3.12+ (tested on Python 3.12 / 3.14 via WSL Ubuntu 24.04).
+- **Random Seed**: `42` (hard-coded and documented across all scripts for full determinism and reproducibility).
 - **Core Libraries**: `pandas`, `numpy`, `scipy`, `scikit-learn`, `matplotlib`, `tqdm`, `openpyxl`.
 
 ### Installation

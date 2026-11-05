@@ -1,7 +1,14 @@
 import argparse
+import random
 from pathlib import Path
 from tqdm import tqdm
+import numpy as np
 import pandas as pd
+
+# Set fixed random seed
+RANDOM_SEED = 42
+random.seed(RANDOM_SEED)
+np.random.seed(RANDOM_SEED)
 
 from part1.data_loader import load_all
 from part1.data_analysis import run_data_analysis
