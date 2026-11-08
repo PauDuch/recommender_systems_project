@@ -9,9 +9,9 @@ recommender_systems_project/
 ├── README.md                              # Reproducibility instructions & architecture
 ├── requirements.txt                       # Explicit pinned dependencies
 ├── run.py                                 # Single documented command entry point
-├── Recommender_Systems_Results_Template.xlsm # Standardized results record workbook
-├── data/                                  # Local dataset folder (ignored from Git)
-│   └── ml-1m/
+├── Report_Group3.docx                     # Project report
+├── Results_Group3.xlsx                    # Official course results workbook
+├── ml-1m/                                 # Local MovieLens dataset (ignored from Git)
 └── part1/
     ├── __init__.py
     ├── data_loader.py                     # Data ingestion, encoding & schema validation
