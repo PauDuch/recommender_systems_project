@@ -9,7 +9,7 @@ class ContentBasedRecommender(BaseRecommender):
     def __init__(
         self,
         movies_df: pd.DataFrame,
-        use_tfidf: bool = True,
+        use_tfidf: bool = False,
         weight_mode: str = "centered",
         year_weight: float = 0.5,
         random_seed: int = 42,
