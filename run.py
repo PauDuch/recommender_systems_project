@@ -15,6 +15,10 @@ from part1.data_analysis import run_data_analysis
 from part1.filter_split import run_filter_split
 from part1.metrics import evaluate_model
 from part1.baselines import MostPopularRecommender, ItemKNNRecommender
+from part2.evaluation import evaluate_part2_models
+from part2.disaggregation import run_disaggregated_evaluation
+from part2.sparsity import run_sparsity_ablation
+from part2.plots import generate_part2_plots
 
 
 def parse_args():
@@ -134,6 +138,25 @@ def main():
         # Step 4: Run Baselines & Evaluation
         catalog_items = sorted(movies["item_id"].unique())
         run_baselines_evaluation(train_df, test_df, catalog_items, outputs_dir, eval_name="Test")
+
+    elif args.part == 2:
+        part2_out = Path("part2") / "outputs"
+        part2_out.mkdir(parents=True, exist_ok=True)
+
+        print("\nPart 2: Running filtering & temporal split...")
+        train_df, _, test_df = run_filter_split(ratings, min_item_ratings=5, min_user_ratings=20)
+
+        print("\nPart 2: Running multi-seed test evaluation & paired tests...")
+        evaluate_part2_models(train_df, test_df, movies, part2_out)
+
+        print("\nPart 2: Running disaggregated evaluation...")
+        run_disaggregated_evaluation(train_df, test_df, movies, part2_out)
+
+        print("\nPart 2: Running sparsity ablation...")
+        run_sparsity_ablation(train_df, test_df, movies, part2_out)
+
+        print("\nPart 2: Generating report plots...")
+        generate_part2_plots(part2_out)
 
 
 if __name__ == "__main__":

@@ -82,6 +82,18 @@ def run_paired_tests(per_user_scores: dict[str, dict[int, float]], reference_mod
     return pd.DataFrame(rows)
 
 
+def get_model_specs(movies_df: pd.DataFrame) -> list[tuple[str, bool, object]]:
+    """Returns (name, is_stochastic, builder_fn) for Part 1 baselines and tuned Part 2 models."""
+    return [
+        ("Most Popular (Pos)", False, lambda seed: MostPopularRecommender(variant="positive_only")),
+        ("Item-kNN (k=100)", False, lambda seed: ItemKNNRecommender(k_neighbors=100, metric="cosine")),
+        ("Content-Based", False, lambda seed: ContentBasedRecommender(movies_df=movies_df, random_seed=seed)),
+        ("MF-SGD", True, lambda seed: MFSGDRecommender(random_seed=seed)),
+        ("BPR-MF", True, lambda seed: BPRRecommender(random_seed=seed)),
+        ("Mult-VAE", True, lambda seed: NeuralVAERecommender(random_seed=seed)),
+    ]
+
+
 def evaluate_part2_models(
     train_df: pd.DataFrame,
     test_df: pd.DataFrame,
@@ -95,14 +107,7 @@ def evaluate_part2_models(
     test_users = sorted(test_df["user_id"].unique())
 
     # Deterministic models run once, stochastic models run across all seeds
-    model_specs = [
-        ("Most Popular (Pos)", False, lambda seed: MostPopularRecommender(variant="positive_only")),
-        ("Item-kNN (k=100)", False, lambda seed: ItemKNNRecommender(k_neighbors=100, metric="cosine")),
-        ("Content-Based", False, lambda seed: ContentBasedRecommender(movies_df=movies_df, random_seed=seed)),
-        ("MF-SGD", True, lambda seed: MFSGDRecommender(random_seed=seed)),
-        ("BPR-MF", True, lambda seed: BPRRecommender(random_seed=seed)),
-        ("Mult-VAE", True, lambda seed: NeuralVAERecommender(random_seed=seed)),
-    ]
+    model_specs = get_model_specs(movies_df)
 
     summary_rows = []
     per_user_ndcg_primary = {}
