@@ -23,12 +23,12 @@ MF-SGD,User Activity,High Activity,> 124 train ratings (2005 users),0.0495,0.028
 MF-SGD,Item Popularity,Popular (Top 20%),>= 316 train ratings (776 items),0.0262,0.0391,0.0368,64.05,5516,42
 MF-SGD,Item Popularity,Mid-Tier (20-50%),81-315 train ratings (1165 items),0.0019,0.0043,0.0027,19.14,3942,42
 MF-SGD,Item Popularity,Long-Tail (Bottom 50%),<= 80 train ratings (1942 items),0.0006,0.0025,0.0019,2.94,1613,42
-BPR-MF,User Activity,Low Activity,<= 45 train ratings (2046 users),0.025,0.0966,0.0615,42.26,1898,42
-BPR-MF,User Activity,Medium Activity,46-124 train ratings (1989 users),0.026,0.0456,0.0386,49.42,1944,42
-BPR-MF,User Activity,High Activity,> 124 train ratings (2005 users),0.0428,0.0287,0.0479,58.87,1984,42
-BPR-MF,Item Popularity,Popular (Top 20%),>= 316 train ratings (776 items),0.0243,0.0605,0.0454,99.87,5516,42
-BPR-MF,Item Popularity,Mid-Tier (20-50%),81-315 train ratings (1165 items),0.0111,0.0385,0.0241,92.45,3942,42
-BPR-MF,Item Popularity,Long-Tail (Bottom 50%),<= 80 train ratings (1942 items),0.0029,0.0119,0.0062,25.18,1613,42
+BPR-MF,User Activity,Low Activity,<= 45 train ratings (2046 users),0.0248,0.0957,0.0605,42.34,1898,42
+BPR-MF,User Activity,Medium Activity,46-124 train ratings (1989 users),0.0261,0.0454,0.0387,49.45,1944,42
+BPR-MF,User Activity,High Activity,> 124 train ratings (2005 users),0.0424,0.0286,0.0477,59.13,1984,42
+BPR-MF,Item Popularity,Popular (Top 20%),>= 316 train ratings (776 items),0.0243,0.0604,0.0451,99.87,5516,42
+BPR-MF,Item Popularity,Mid-Tier (20-50%),81-315 train ratings (1165 items),0.011,0.0375,0.0238,92.62,3942,42
+BPR-MF,Item Popularity,Long-Tail (Bottom 50%),<= 80 train ratings (1942 items),0.0029,0.0118,0.006,25.23,1613,42
 Mult-VAE,User Activity,Low Activity,<= 45 train ratings (2046 users),0.0302,0.1122,0.0719,17.87,1898,42
 Mult-VAE,User Activity,Medium Activity,46-124 train ratings (1989 users),0.0389,0.0644,0.056,24.59,1944,42
 Mult-VAE,User Activity,High Activity,> 124 train ratings (2005 users),0.0751,0.0471,0.083,33.97,1984,42

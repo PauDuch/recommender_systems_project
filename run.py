@@ -33,8 +33,8 @@ def parse_args():
         "--part",
         type=int,
         choices=[1, 2, 3],
-        default=1,
-        help="Project part to execute (default: 1)",
+        default=None,
+        help="Project part to execute (omit to run all implemented parts)",
     )
     return parser.parse_args()
 
@@ -115,18 +115,19 @@ def run_baselines_evaluation(train_df: pd.DataFrame, eval_df: pd.DataFrame, cata
 def main():
     args = parse_args()
     data_dir = Path(args.data_dir)
+    parts_to_run = [1, 2] if args.part is None else [args.part]
 
-    print(f"=== Running Recommender Systems Pipeline: Part {args.part} ===")
+    label = "All Parts (1 & 2)" if args.part is None else f"Part {args.part}"
+    print(f"=== Running Recommender Systems Pipeline: {label} ===")
     print(f"Dataset path: {data_dir.resolve()}\n")
 
     # Step 1: Ingestion
     ratings, movies, users = load_all(data_dir)
 
-    # Ensure output directory exists for Part 1
-    outputs_dir = Path("part1") / "outputs"
-    outputs_dir.mkdir(parents=True, exist_ok=True)
+    if 1 in parts_to_run:
+        outputs_dir = Path("part1") / "outputs"
+        outputs_dir.mkdir(parents=True, exist_ok=True)
 
-    if args.part == 1:
         # Step 2: Data characterization and plots
         print("\nPart 1: Running data analysis...")
         run_data_analysis(ratings, movies, users, outputs_dir)
@@ -139,7 +140,7 @@ def main():
         catalog_items = sorted(movies["item_id"].unique())
         run_baselines_evaluation(train_df, test_df, catalog_items, outputs_dir, eval_name="Test")
 
-    elif args.part == 2:
+    if 2 in parts_to_run:
         part2_out = Path("part2") / "outputs"
         part2_out.mkdir(parents=True, exist_ok=True)
 
@@ -157,6 +158,9 @@ def main():
 
         print("\nPart 2: Generating report plots...")
         generate_part2_plots(part2_out)
+
+    if 3 in parts_to_run:
+        print("\nPart 3 is not implemented yet.")
 
 
 if __name__ == "__main__":
