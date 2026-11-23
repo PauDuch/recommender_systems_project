@@ -49,6 +49,15 @@ recommender_systems_project/
         ├── sparsity_part2.csv             # Sparsity ablation results (100%, 50%, 20%)
         ├── part2_accuracy_vs_coverage.png # Test NDCG@10 & Accuracy-Coverage trade-off
         └── part2_disagg_and_sparsity.png  # Item popularity breakdown & sparsity curve
+└── part3/
+    ├── __init__.py
+    ├── reranker.py                        # 18-dim genre vectors & greedy MMR re-ranker
+    ├── metrics.py                         # Intra-list diversity (ILD), Gini & calibration error
+    ├── evaluate_track_a.py                # MMR lambda sweep on Mult-VAE top-100 candidates
+    ├── plots.py                           # Accuracy-diversity frontier & calibration/coverage plot
+    └── outputs/
+        ├── track_a_results.csv            # Full lambda sweep metrics (lambda = 1.0 to 0.0)
+        └── part3_track_a_frontier.png     # Accuracy-diversity frontier & calibration plot
 ```
 
 ---
@@ -95,6 +104,9 @@ python run.py --data-dir ml-1m --part 1
 
 # Run Part 2 (multi-seed test evaluation, disaggregation, sparsity ablation & plots)
 python run.py --data-dir ml-1m --part 2
+
+# Run Part 3 (Track A: MMR diversity & popularity bias sweep on Mult-VAE + frontier plot)
+python run.py --data-dir ml-1m --part 3
 ```
 
 ### What Is Not Included in `run.py` (Standalone Scripts)
@@ -103,12 +115,14 @@ Hyperparameter tuning is kept separate from `run.py` in both parts so that `run.
 - **Part 1:** Only `part1/tune.py` is standalone (`python part1/tune.py --data-dir ml-1m`).
 - **Part 2:** `part2/tune.py` is standalone (`python part2/tune.py --data-dir ml-1m`). 
 
-Unlike Part 1, each Part 2 stage can also be run individually if needed:
+Unlike Part 1, each Part 2 and Part 3 stage can also be run individually if needed:
 ```bash
-python part2/evaluation.py --data-dir ml-1m      # Multi-seed test evaluation + paired t-tests
-python part2/disaggregation.py --data-dir ml-1m  # User activity & item popularity breakdowns
-python part2/sparsity.py --data-dir ml-1m        # 100% / 50% / 20% sparsity ablation
-python part2/plots.py                            # Generate summary PNG figures from saved CSVs
+python part2/evaluation.py --data-dir ml-1m        # Multi-seed test evaluation + paired t-tests
+python part2/disaggregation.py --data-dir ml-1m    # User activity & item popularity breakdowns
+python part2/sparsity.py --data-dir ml-1m          # 100% / 50% / 20% sparsity ablation
+python part2/plots.py                              # Generate Part 2 summary PNG figures from CSVs
+python part3/evaluate_track_a.py --data-dir ml-1m  # MMR lambda sweep & beyond-accuracy metrics
+python part3/plots.py                              # Generate Part 3 Track A frontier plot from CSV
 ```
 
 ---
@@ -150,3 +164,12 @@ Four models spanning four distinct paradigms were tuned strictly on the **Valida
 | **Content-Based** | Content-Based (Cosine) | **Yes** | `use_tfidf=False, weight_mode='centered', year_weight=0.5` | 0.0121 |
 
 *Conclusion*: Each winning configuration is saved as the default in `part2/models/` and evaluated on the Test set (with 5-seed 95% confidence intervals, paired t-tests, disaggregation, and sparsity ablation) via `python run.py --data-dir ml-1m --part 2`.
+
+---
+
+### 5.3 Part 3 (Track A): Diversity & Popularity Bias
+
+Track A applies greedy **Maximal Marginal Relevance (MMR)** re-ranking over the top-100 unseen candidates from the tuned **Mult-VAE** base recommender (`seed=42`), using **Cosine distance** over L2-normalized 18-dimensional genre vectors (`movies.dat`). We conducted a **3-stage adaptive sweep** of the trade-off parameter $\lambda$ (`part3/outputs/track_a_results.csv` and `part3/outputs/part3_track_a_frontier.png`), executed via `python run.py --data-dir ml-1m --part 3`:
+1. **Stage 1:** Evaluated $\lambda \in \{1.0, 0.9, 0.7, 0.5, 0.3, 0.1, 0.0\}$ to map the overall frontier, observing a flat high-accuracy region between `1.0` and `0.7`.
+2. **Stage 2:** Added intermediate tenths ($\lambda \in \{0.8, 0.6, 0.4, 0.2\}$), revealing that $\lambda = 0.8$ reaches the global ranking accuracy peak (`NDCG@10 = 0.0708` vs. base `0.0704`) while $\lambda = 0.6$ marks the frontier knee.
+3. **Stage 3:** Added `0.025` steps ($\lambda \in \{0.85, 0.825, 0.775, 0.75, 0.725, 0.65\}$) around the peak and knee to verify local sensitivity and confirm the plateau around $\lambda = 0.8$.
