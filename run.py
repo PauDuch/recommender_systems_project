@@ -19,6 +19,8 @@ from part2.evaluation import evaluate_part2_models
 from part2.disaggregation import run_disaggregated_evaluation
 from part2.sparsity import run_sparsity_ablation
 from part2.plots import generate_part2_plots
+from part3.evaluate_track_a import run_track_a_evaluation
+from part3.plots import generate_part3_plots
 
 
 def parse_args():
@@ -115,9 +117,9 @@ def run_baselines_evaluation(train_df: pd.DataFrame, eval_df: pd.DataFrame, cata
 def main():
     args = parse_args()
     data_dir = Path(args.data_dir)
-    parts_to_run = [1, 2] if args.part is None else [args.part]
+    parts_to_run = [1, 2, 3] if args.part is None else [args.part]
 
-    label = "All Parts (1 & 2)" if args.part is None else f"Part {args.part}"
+    label = "All Parts (1, 2 & 3)" if args.part is None else f"Part {args.part}"
     print(f"=== Running Recommender Systems Pipeline: {label} ===")
     print(f"Dataset path: {data_dir.resolve()}\n")
 
@@ -160,7 +162,17 @@ def main():
         generate_part2_plots(part2_out)
 
     if 3 in parts_to_run:
-        print("\nPart 3 is not implemented yet.")
+        part3_out = Path("part3") / "outputs"
+        part3_out.mkdir(parents=True, exist_ok=True)
+
+        print("\nPart 3 (Track A): Running filtering & temporal split...")
+        train_df, _, test_df = run_filter_split(ratings, min_item_ratings=5, min_user_ratings=20)
+
+        print("\nPart 3 (Track A): Running MMR diversity & popularity bias sweep...")
+        run_track_a_evaluation(train_df, test_df, movies, part3_out)
+
+        print("\nPart 3 (Track A): Generating accuracy-diversity frontier plot...")
+        generate_part3_plots(part3_out)
 
 
 if __name__ == "__main__":
