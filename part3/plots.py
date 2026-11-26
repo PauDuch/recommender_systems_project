@@ -110,9 +110,9 @@ def plot_track_a_analysis(disagg_csv: Path, diag_csv: Path, output_dir: Path) ->
     # Left panel: Calibration Error across User Activity Tertiles (with rating thresholds on x-axis)
     groups = ["Low Activity", "Medium Activity", "High Activity"]
     group_labels = [
-        "Low Activity\n(≤ 55 ratings)",
-        "Medium Activity\n(56–132 ratings)",
-        "High Activity\n(> 132 ratings)",
+        "Low Activity\n(≤ 45 ratings)",
+        "Medium Activity\n(46–124 ratings)",
+        "High Activity\n(> 124 ratings)",
     ]
     systems = [
         ("Item-kNN (k=100, 2nd-Best)", "Item-kNN (k=100)", "#7f7f7f"),
