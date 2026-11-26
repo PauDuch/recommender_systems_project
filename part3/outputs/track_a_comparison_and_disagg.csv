@@ -1,0 +1,17 @@
+System,Group,Definition,Precision@10,Recall@10,NDCG@10,Intra-list diversity,Catalogue coverage,Gini,Calibration error,Users Evaluated,Seed
+Mult-VAE + MMR (lambda=0.8),All Users,Full test set (6040 users),0.0488,0.0746,0.0708,0.6798,35.9,0.9282,0.6629,5826,42
+Mult-VAE + MMR (lambda=0.8),Low Activity,<= 45 train ratings (2046 users),0.0301,0.1115,0.0722,0.677,17.25,0.9663,0.6371,1898,42
+Mult-VAE + MMR (lambda=0.8),Medium Activity,46-124 train ratings (1989 users),0.0399,0.0666,0.0572,0.6552,24.05,0.9358,0.6319,1944,42
+Mult-VAE + MMR (lambda=0.8),High Activity,> 124 train ratings (2005 users),0.0754,0.0472,0.0829,0.7069,32.73,0.902,0.7199,1984,42
+Mult-VAE + MMR (lambda=0.7),All Users,Full test set (6040 users),0.0485,0.0734,0.07,0.723,35.36,0.9315,0.6065,5826,42
+Mult-VAE + MMR (lambda=0.7),Low Activity,<= 45 train ratings (2046 users),0.03,0.1098,0.0711,0.7204,16.77,0.9677,0.6008,1898,42
+Mult-VAE + MMR (lambda=0.7),Medium Activity,46-124 train ratings (1989 users),0.0395,0.0647,0.0565,0.7001,23.59,0.9389,0.5691,1944,42
+Mult-VAE + MMR (lambda=0.7),High Activity,> 124 train ratings (2005 users),0.0751,0.047,0.0822,0.7485,32.01,0.9066,0.6492,1984,42
+"Mult-VAE (Base, lambda=1.0)",All Users,Full test set (6040 users),0.0484,0.0741,0.0704,0.6141,36.9,0.9231,0.802,5826,42
+"Mult-VAE (Base, lambda=1.0)",Low Activity,<= 45 train ratings (2046 users),0.0302,0.1122,0.0719,0.6154,17.87,0.9641,0.7382,1898,42
+"Mult-VAE (Base, lambda=1.0)",Medium Activity,46-124 train ratings (1989 users),0.0389,0.0644,0.056,0.5868,24.59,0.9311,0.7793,1944,42
+"Mult-VAE (Base, lambda=1.0)",High Activity,> 124 train ratings (2005 users),0.0751,0.0471,0.083,0.6398,33.97,0.8949,0.8895,1984,42
+"Item-kNN (k=100, 2nd-Best)",All Users,Full test set (6040 users),0.0432,0.0656,0.0627,0.5765,31.68,0.9261,0.8679,5826,42
+"Item-kNN (k=100, 2nd-Best)",Low Activity,<= 45 train ratings (2046 users),0.0279,0.1029,0.0666,0.5713,25.37,0.9353,0.8557,1898,42
+"Item-kNN (k=100, 2nd-Best)",Medium Activity,46-124 train ratings (1989 users),0.0327,0.0546,0.045,0.5517,25.26,0.9264,0.857,1944,42
+"Item-kNN (k=100, 2nd-Best)",High Activity,> 124 train ratings (2005 users),0.068,0.0406,0.0764,0.6064,21.07,0.9388,0.8912,1984,42

@@ -1,13 +1,14 @@
 import argparse
 from pathlib import Path
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 
-# Part 3 Track A Summary Plots (Accuracy-Diversity Frontier & Beyond-Accuracy Trade-offs)
+# Part 3 Track A Summary Plots (Frontier, Disaggregation & Coverage Diagnosis)
 
 
 def plot_track_a_frontier(track_a_csv: Path, output_dir: Path) -> Path:
-    """Generates wide 2-panel figure: Accuracy-Diversity Frontier and Calibration/Coverage/Gini vs Lambda."""
+    """Generates wide 2-panel figure: Accuracy-Diversity Frontier and Calibration/Coverage vs Lambda."""
     df = pd.read_csv(track_a_csv).sort_values("Lambda", ascending=False).reset_index(drop=True)
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10.5, 4.0))
@@ -99,8 +100,131 @@ def plot_track_a_frontier(track_a_csv: Path, output_dir: Path) -> Path:
     return out_path
 
 
+def plot_track_a_analysis(disagg_csv: Path, diag_csv: Path, output_dir: Path) -> Path:
+    """Generates wide 2-panel figure: User-Activity Calibration Error & Simple Coverage Bar Comparison."""
+    disagg_df = pd.read_csv(disagg_csv)
+    diag_df = pd.read_csv(diag_csv)
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11.0, 4.2))
+
+    # Left panel: Calibration Error across User Activity Tertiles (with rating thresholds on x-axis)
+    groups = ["Low Activity", "Medium Activity", "High Activity"]
+    group_labels = [
+        "Low Activity\n(≤ 55 ratings)",
+        "Medium Activity\n(56–132 ratings)",
+        "High Activity\n(> 132 ratings)",
+    ]
+    systems = [
+        ("Item-kNN (k=100, 2nd-Best)", "Item-kNN (k=100)", "#7f7f7f"),
+        ("Mult-VAE (Base, lambda=1.0)", "Mult-VAE (λ=1.0)", "#1f77b4"),
+        ("Mult-VAE + MMR (lambda=0.8)", "MMR (λ=0.8)", "#2ca02c"),
+        ("Mult-VAE + MMR (lambda=0.7)", "MMR (λ=0.7)", "#ff7f0e"),
+    ]
+    x = np.arange(len(groups))
+    width = 0.20
+
+    for idx, (sys_key, label, color) in enumerate(systems):
+        sub = disagg_df[disagg_df["System"] == sys_key].set_index("Group")
+        vals = [float(sub.loc[g, "Calibration error"]) for g in groups]
+        offset = (idx - 1.5) * width
+        bars = ax1.bar(x + offset, vals, width=width, label=label, color=color, alpha=0.9)
+        for bar in bars:
+            h = bar.get_height()
+            ax1.text(
+                bar.get_x() + bar.get_width() / 2.0,
+                h + 0.012,
+                f"{h:.2f}",
+                ha="center",
+                va="bottom",
+                fontsize=7.0,
+            )
+
+    ax1.set_xticks(x)
+    ax1.set_xticklabels(group_labels)
+    ax1.set_ylabel("Calibration Error (KL Divergence ↓)")
+    ax1.set_title("Genre Calibration Error by User Activity Group")
+    ax1.set_ylim(0.0, 1.15)
+    ax1.legend(loc="upper left", fontsize=7.5, ncol=2, frameon=True)
+    ax1.grid(True, axis="y", linestyle="--", alpha=0.4)
+
+    # Right panel: Simple grouped bar chart comparing Catalogue Coverage (%) vs Top-5 Blockbuster Share (%)
+    selected_configs = [
+        ("Standard Genre MMR (lambda=1.0)", "Base Mult-VAE\n(λ=1.0)"),
+        ("Standard Genre MMR (lambda=0.7)", "Standard MMR\n(λ=0.7)"),
+        ("Standard Genre MMR (lambda=0.5)", "Standard MMR\n(λ=0.5)"),
+        ("Popularity-TieBreak MMR (lambda=0.7, gamma=0.25)", "Pop-TieBreak\n(λ=0.7, γ=0.25)"),
+        ("Popularity-TieBreak MMR (lambda=0.7, gamma=0.35)", "Pop-TieBreak\n(λ=0.7, γ=0.35)"),
+    ]
+    diag_indexed = diag_df.set_index("Configuration")
+    x2 = np.arange(len(selected_configs))
+    w2 = 0.34
+
+    top5_vals = [float(diag_indexed.loc[k, "Within-genre top-5 share (%)"]) for k, _ in selected_configs]
+    cov_vals = [float(diag_indexed.loc[k, "Catalogue coverage"]) for k, _ in selected_configs]
+    x2_labels = [lbl for _, lbl in selected_configs]
+
+    bars_top5 = ax2.bar(
+        x2 - w2 / 2,
+        top5_vals,
+        width=w2,
+        color="#d62728",
+        alpha=0.88,
+        label="Top-5 Blockbusters per Genre (% ↓)",
+    )
+    bars_cov = ax2.bar(
+        x2 + w2 / 2,
+        cov_vals,
+        width=w2,
+        color="#1f77b4",
+        alpha=0.92,
+        label="Catalogue Coverage (% ↑)",
+    )
+
+    for bar in bars_top5:
+        h = bar.get_height()
+        ax2.text(
+            bar.get_x() + bar.get_width() / 2.0,
+            h + 0.5,
+            f"{h:.1f}%",
+            ha="center",
+            va="bottom",
+            fontsize=6.8,
+            color="#a51d1d",
+            fontweight="bold",
+        )
+    for bar in bars_cov:
+        h = bar.get_height()
+        ax2.text(
+            bar.get_x() + bar.get_width() / 2.0,
+            h + 0.5,
+            f"{h:.1f}%",
+            ha="center",
+            va="bottom",
+            fontsize=6.8,
+            color="#155785",
+            fontweight="bold",
+        )
+
+    # Vertical divider separating Standard MMR (problem) from Pop-TieBreak MMR (fix)
+    ax2.axvline(2.5, color="#555555", linestyle=":", linewidth=1.3)
+
+    ax2.set_xticks(x2)
+    ax2.set_xticklabels(x2_labels, fontsize=7.8)
+    ax2.set_ylabel("Percentage (%)")
+    ax2.set_title("Why Standard MMR Drops Coverage & How Tie-Breaking Fixes It")
+    ax2.set_ylim(25.0, 58.0)
+    ax2.legend(loc="upper left", fontsize=7.5, frameon=True)
+    ax2.grid(True, axis="y", linestyle="--", alpha=0.4)
+
+    plt.tight_layout()
+    out_path = output_dir / "part3_track_a_analysis.png"
+    fig.savefig(out_path, dpi=300, bbox_inches="tight")
+    plt.close(fig)
+    return out_path
+
+
 def generate_part3_plots(output_dir: Path) -> list[Path]:
-    """Generates the Track A summary figure from track_a_results.csv."""
+    """Generates the Track A summary figures from saved CSV outputs."""
     output_dir.mkdir(parents=True, exist_ok=True)
     generated = []
 
@@ -108,13 +232,18 @@ def generate_part3_plots(output_dir: Path) -> list[Path]:
     if track_a_csv.exists():
         generated.append(plot_track_a_frontier(track_a_csv, output_dir))
 
+    disagg_csv = output_dir / "track_a_comparison_and_disagg.csv"
+    diag_csv = output_dir / "track_a_coverage_diagnosis.csv"
+    if disagg_csv.exists() and diag_csv.exists():
+        generated.append(plot_track_a_analysis(disagg_csv, diag_csv, output_dir))
+
     for p in generated:
         print(f"Saved Part 3 plot: {p}")
     return generated
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Generate Part 3 Track A Plots from Saved CSV")
+    parser = argparse.ArgumentParser(description="Generate Part 3 Track A Plots from Saved CSVs")
     parser.add_argument("--output-dir", type=str, default="part3/outputs", help="Directory containing Part 3 CSVs")
     args = parser.parse_args()
 

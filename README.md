@@ -51,13 +51,18 @@ recommender_systems_project/
         └── part2_disagg_and_sparsity.png  # Item popularity breakdown & sparsity curve
 └── part3/
     ├── __init__.py
-    ├── reranker.py                        # 18-dim genre vectors & greedy MMR re-ranker
-    ├── metrics.py                         # Intra-list diversity (ILD), Gini & calibration error
-    ├── evaluate_track_a.py                # MMR lambda sweep on Mult-VAE top-100 candidates
-    ├── plots.py                           # Accuracy-diversity frontier & calibration/coverage plot
+    ├── reranker.py                        # 18-dim genre vectors (Cosine, Jaccard, Manhattan) & MMR
+    ├── metrics.py                         # Intra-list diversity (ILD), Gini, calibration & top-5 share
+    ├── evaluate_track_a.py                # Staged Track A pipeline (distance selection, sweep, disagg, diagnosis)
+    ├── plots.py                           # Frontier & disaggregation/diagnosis report figures
     └── outputs/
-        ├── track_a_results.csv            # Full lambda sweep metrics (lambda = 1.0 to 0.0)
-        └── part3_track_a_frontier.png     # Accuracy-diversity frontier & calibration plot
+        ├── track_a_distance_comparison.csv     # Step A: Cosine vs. Jaccard vs. Manhattan benchmark
+        ├── track_a_results.csv                 # Step B: 17-point adaptive MMR lambda sweep (Cosine)
+        ├── track_a_paired_tests.csv            # Step C1: Paired t-tests on per-user NDCG@10 & ILD
+        ├── track_a_comparison_and_disagg.csv   # Step C2: Comparison vs. Mult-VAE & Item-kNN by activity
+        ├── track_a_coverage_diagnosis.csv      # Step D: Coverage paradox diagnosis & tie-breaker fix
+        ├── part3_track_a_frontier.png          # Accuracy-diversity frontier & calibration/coverage plot
+        └── part3_track_a_analysis.png          # User-activity calibration & coverage diagnosis plot
 ```
 
 ---
@@ -105,7 +110,7 @@ python run.py --data-dir ml-1m --part 1
 # Run Part 2 (multi-seed test evaluation, disaggregation, sparsity ablation & plots)
 python run.py --data-dir ml-1m --part 2
 
-# Run Part 3 (Track A: MMR diversity & popularity bias sweep on Mult-VAE + frontier plot)
+# Run Part 3 (Track A: distance benchmark, 17-point MMR sweep, comparison/disagg, diagnosis & plots)
 python run.py --data-dir ml-1m --part 3
 ```
 
@@ -121,8 +126,8 @@ python part2/evaluation.py --data-dir ml-1m        # Multi-seed test evaluation 
 python part2/disaggregation.py --data-dir ml-1m    # User activity & item popularity breakdowns
 python part2/sparsity.py --data-dir ml-1m          # 100% / 50% / 20% sparsity ablation
 python part2/plots.py                              # Generate Part 2 summary PNG figures from CSVs
-python part3/evaluate_track_a.py --data-dir ml-1m  # MMR lambda sweep & beyond-accuracy metrics
-python part3/plots.py                              # Generate Part 3 Track A frontier plot from CSV
+python part3/evaluate_track_a.py --data-dir ml-1m  # Full 4-stage Track A evaluation pipeline
+python part3/plots.py                              # Generate Part 3 Track A PNG figures from CSVs
 ```
 
 ---
@@ -169,7 +174,8 @@ Four models spanning four distinct paradigms were tuned strictly on the **Valida
 
 ### 5.3 Part 3 (Track A): Diversity & Popularity Bias
 
-Track A applies greedy **Maximal Marginal Relevance (MMR)** re-ranking over the top-100 unseen candidates from the tuned **Mult-VAE** base recommender (`seed=42`), using **Cosine distance** over L2-normalized 18-dimensional genre vectors (`movies.dat`). We conducted a **3-stage adaptive sweep** of the trade-off parameter $\lambda$ (`part3/outputs/track_a_results.csv` and `part3/outputs/part3_track_a_frontier.png`), executed via `python run.py --data-dir ml-1m --part 3`:
-1. **Stage 1:** Evaluated $\lambda \in \{1.0, 0.9, 0.7, 0.5, 0.3, 0.1, 0.0\}$ to map the overall frontier, observing a flat high-accuracy region between `1.0` and `0.7`.
-2. **Stage 2:** Added intermediate tenths ($\lambda \in \{0.8, 0.6, 0.4, 0.2\}$), revealing that $\lambda = 0.8$ reaches the global ranking accuracy peak (`NDCG@10 = 0.0708` vs. base `0.0704`) while $\lambda = 0.6$ marks the frontier knee.
-3. **Stage 3:** Added `0.025` steps ($\lambda \in \{0.85, 0.825, 0.775, 0.75, 0.725, 0.65\}$) around the peak and knee to verify local sensitivity and confirm the plateau around $\lambda = 0.8$.
+Track A applies greedy **Maximal Marginal Relevance (MMR)** re-ranking over the top-100 unseen candidates from the tuned **Mult-VAE** base recommender (`seed=42`) using 18-dimensional genre representations (`movies.dat`). Running `python run.py --data-dir ml-1m --part 3` executes a clean **4-step experimental pipeline**:
+1. **Step A — Genre Distance Metric Selection (`track_a_distance_comparison.csv`):** Benchmarks 3 genre distance definitions (**Cosine distance** on L2-normalized vectors, **Jaccard distance** on binary genre sets, and **Normalized Manhattan / TV distance** on L1 probability distributions) at fixed $\lambda \in \{0.8, 0.7\}$, showing why **Cosine distance** is selected for the main sweep.
+2. **Step B — 17-Point 3-Stage Adaptive $\lambda$ Sweep (`track_a_results.csv`, `part3_track_a_frontier.png`):** Evaluates $\lambda$ from `1.0` down to `0.0` in three adaptive stages (Stage 1 coarse grid -> Stage 2 `0.1` steps revealing the $\lambda=0.8$ accuracy peak and $\lambda=0.6$ Pareto knee -> Stage 3 `0.025` fine zoom).
+3. **Step C — Full-Scale Comparison, Paired T-Tests & User-Activity Disaggregation (`track_a_paired_tests.csv`, `track_a_comparison_and_disagg.csv`):** Compares `Mult-VAE + MMR (λ=0.8 / 0.7)` against unmodified `Mult-VAE (λ=1.0)` and the 2nd-best model `Item-kNN (k=100)` across all 5,826 evaluated users and Low/Medium/High user-activity tertiles.
+4. **Step D — Coverage Paradox Diagnosis & Popularity-Penalized Tie-Breaker (`track_a_coverage_diagnosis.csv`, `part3_track_a_analysis.png`):** Measures within-genre top-5 blockbuster concentration (`46.63% -> 50.78%`) and demonstrates that a lightweight popularity-penalized tie-breaker at $\lambda=0.7$ boosts catalogue coverage to `39.17%–41.13%` and lowers Gini to `0.9182`.

@@ -1,13 +1,58 @@
 import numpy as np
 import pandas as pd
 
-# Genre Vector Representation and Maximal Marginal Relevance (MMR) Re-ranking
+# Genre Vector Representation, Pairwise Distance Measures, and MMR Re-ranking
+
+DISTANCE_LABELS = {
+    "cosine": "Cosine distance (18-dim L2 genres)",
+    "jaccard": "Jaccard distance (18-dim binary genres)",
+    "manhattan": "Normalized Manhattan / TV distance (18-dim L1 genres)",
+}
+
+
+def build_genre_distance_matrices(
+    raw_genres: np.ndarray,
+    l1_genres: np.ndarray,
+    l2_genres: np.ndarray,
+    metric: str = "cosine",
+) -> tuple[np.ndarray, np.ndarray]:
+    """Builds pairwise item similarity and distance matrices in [0, 1] for the chosen genre distance metric."""
+    metric_key = metric.lower().strip()
+
+    if metric_key == "cosine":
+        # Cosine similarity on L2-normalized genre vectors: sim(i, j) = g_i . g_j / (||g_i||_2 ||g_j||_2)
+        sim_matrix = np.clip(l2_genres @ l2_genres.T, 0.0, 1.0).astype(np.float32)
+        dist_matrix = (1.0 - sim_matrix).astype(np.float32)
+
+    elif metric_key == "jaccard":
+        # Jaccard similarity on binary multi-hot genre sets: |G_i cap G_j| / |G_i cup G_j|
+        inter = raw_genres @ raw_genres.T
+        row_counts = raw_genres.sum(axis=1, keepdims=True)
+        union = row_counts + row_counts.T - inter
+        union[union == 0] = 1.0
+        sim_matrix = np.clip(inter / union, 0.0, 1.0).astype(np.float32)
+        dist_matrix = (1.0 - sim_matrix).astype(np.float32)
+
+    elif metric_key in ("manhattan", "l1", "tv"):
+        # Normalized Manhattan / Total Variation distance on L1 probability distributions: 0.5 * sum |p_i - p_j|
+        dist_matrix = (0.5 * np.abs(l1_genres[:, None, :] - l1_genres[None, :, :]).sum(axis=2)).astype(np.float32)
+        dist_matrix = np.clip(dist_matrix, 0.0, 1.0)
+        sim_matrix = (1.0 - dist_matrix).astype(np.float32)
+
+    else:
+        raise ValueError(f"Unsupported genre distance metric: {metric}. Choose from 'cosine', 'jaccard', 'manhattan'.")
+
+    np.fill_diagonal(dist_matrix, 0.0)
+    np.fill_diagonal(sim_matrix, 1.0)
+    return sim_matrix, dist_matrix
 
 
 def build_genre_representation(
-    movies_df: pd.DataFrame, catalog_items: list[int]
+    movies_df: pd.DataFrame,
+    catalog_items: list[int],
+    metric: str = "cosine",
 ) -> tuple[dict[int, int], dict[int, int], np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """Builds 18-dim genre vectors, cosine similarity matrix, and cosine distance matrix for catalog items."""
+    """Builds 18-dim genre vectors, pairwise similarity matrix, and distance matrix for catalog items."""
     unique_items = sorted(set(catalog_items))
     item_to_idx = {i: idx for idx, i in enumerate(unique_items)}
     idx_to_item = {idx: i for i, idx in item_to_idx.items()}
@@ -35,7 +80,7 @@ def build_genre_representation(
             if g in genre_to_col:
                 raw_genres[idx, genre_to_col[g]] = 1.0
 
-    # L1-normalize each item row so its genre weights sum to 1.0 (used for Calibration Error)
+    # L1-normalize each item row so its genre weights sum to 1.0 (used for Calibration Error & Manhattan distance)
     row_sums = raw_genres.sum(axis=1, keepdims=True)
     row_sums[row_sums == 0] = 1.0
     l1_genres = raw_genres / row_sums
@@ -45,10 +90,8 @@ def build_genre_representation(
     l2_norms[l2_norms == 0] = 1.0
     l2_genres = raw_genres / l2_norms
 
-    # Precompute full pairwise cosine similarity and cosine distance (1 - cos_sim) matrices in [0, 1]
-    sim_matrix = np.clip(l2_genres @ l2_genres.T, 0.0, 1.0).astype(np.float32)
-    dist_matrix = (1.0 - sim_matrix).astype(np.float32)
-    np.fill_diagonal(dist_matrix, 0.0)
+    # Precompute full pairwise similarity and distance matrices in [0, 1] for the requested metric
+    sim_matrix, dist_matrix = build_genre_distance_matrices(raw_genres, l1_genres, l2_genres, metric=metric)
 
     return item_to_idx, idx_to_item, l1_genres, l2_genres, sim_matrix, dist_matrix
 
@@ -90,6 +133,29 @@ def extract_user_candidate_pools(
         candidate_pools[user_id] = (cand_idx, norm_scores.astype(np.float32))
 
     return candidate_pools
+
+
+def apply_popularity_tiebreak_to_pools(
+    candidate_pools: dict[int, tuple[np.ndarray, np.ndarray]],
+    train_df: pd.DataFrame,
+    catalog_items: list[int],
+    gamma: float = 0.25,
+) -> dict[int, tuple[np.ndarray, np.ndarray]]:
+    """Applies a popularity-penalized tie-breaker to candidate relevance scores to reduce within-genre concentration."""
+    if gamma <= 0.0:
+        return candidate_pools
+
+    # Compute normalized item popularity rank in [0, 1] (0 = least popular, 1 = most popular blockbuster)
+    item_counts = train_df.groupby("item_id").size().reindex(catalog_items, fill_value=0).values.astype(np.float32)
+    pop_rank = np.argsort(np.argsort(item_counts)).astype(np.float32) / max(1, len(catalog_items) - 1)
+
+    adjusted_pools = {}
+    for user_id, (cand_idx, norm_scores) in candidate_pools.items():
+        # Blend normalized base relevance with inverse popularity rank (1 - pop_rank)
+        adj_scores = (1.0 - gamma) * norm_scores + gamma * (1.0 - pop_rank[cand_idx])
+        adjusted_pools[user_id] = (cand_idx, adj_scores.astype(np.float32))
+
+    return adjusted_pools
 
 
 def mmr_rerank_user(

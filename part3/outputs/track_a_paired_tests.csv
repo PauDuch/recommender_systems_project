@@ -1,0 +1,5 @@
+System,Reference,Users (NDCG),Mean Diff NDCG@10,t-stat (NDCG),p-value (NDCG),Mean Diff ILD,t-stat (ILD),p-value (ILD)
+Mult-VAE + MMR (lambda=0.8),"Mult-VAE (Base, lambda=1.0)",5826,0.00045,0.996,0.31922472392972373,0.06566,78.187,0.0
+Mult-VAE + MMR (lambda=0.8),"Item-kNN (k=100, 2nd-Best)",5826,0.00808,5.237,1.6883332379519791e-07,0.10322,59.497,0.0
+Mult-VAE + MMR (lambda=0.7),"Mult-VAE (Base, lambda=1.0)",5826,-0.00039,-0.617,0.5373356461495327,0.10895,101.124,0.0
+Mult-VAE + MMR (lambda=0.7),"Item-kNN (k=100, 2nd-Best)",5826,0.00725,4.624,3.847176782746592e-06,0.14652,84.992,0.0

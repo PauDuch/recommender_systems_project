@@ -3,31 +3,43 @@ import pandas as pd
 
 # Beyond-Accuracy Metrics for Track A (Intra-List Diversity, Gini Index, Calibration Error)
 
+
+def compute_per_user_ild(
+    recommendations: dict[int, list[int]],
+    item_to_idx: dict[int, int],
+    dist_matrix: np.ndarray,
+    k: int = 10,
+) -> dict[int, float]:
+    """Computes per-user Intra-List Diversity (average pairwise genre distance in top-K) for paired tests."""
+    user_ilds = {}
+    # Precompute upper-triangle pair indices for a list of length K (45 pairs when K=10)
+    triu_i, triu_j = np.triu_indices(k, k=1)
+
+    for user_id, top_items in recommendations.items():
+        indices = [item_to_idx[i] for i in top_items[:k] if i in item_to_idx]
+        if len(indices) < 2:
+            continue
+
+        # Extract all pairwise distances among the recommended items
+        if len(indices) == k:
+            pair_dists = dist_matrix[np.ix_(indices, indices)][triu_i, triu_j]
+        else:
+            ti, tj = np.triu_indices(len(indices), k=1)
+            pair_dists = dist_matrix[np.ix_(indices, indices)][ti, tj]
+        user_ilds[user_id] = float(np.mean(pair_dists))
+
+    return user_ilds
+
+
 def compute_intra_list_diversity(
     recommendations: dict[int, list[int]],
     item_to_idx: dict[int, int],
     dist_matrix: np.ndarray,
     k: int = 10,
 ) -> float:
-    """Computes mean Intra-List Diversity (average pairwise cosine genre distance in top-K)."""
-    user_ilds = []
-    # Precompute upper-triangle pair indices for a list of length K (45 pairs when K=10)
-    triu_i, triu_j = np.triu_indices(k, k=1)
-
-    for top_items in recommendations.values():
-        indices = [item_to_idx[i] for i in top_items[:k] if i in item_to_idx]
-        if len(indices) < 2:
-            continue
-
-        # Extract all pairwise cosine distances among the recommended items
-        if len(indices) == k:
-            pair_dists = dist_matrix[np.ix_(indices, indices)][triu_i, triu_j]
-        else:
-            ti, tj = np.triu_indices(len(indices), k=1)
-            pair_dists = dist_matrix[np.ix_(indices, indices)][ti, tj]
-        user_ilds.append(float(np.mean(pair_dists)))
-
-    return float(np.mean(user_ilds)) if user_ilds else 0.0
+    """Computes mean Intra-List Diversity (average pairwise genre distance in top-K)."""
+    user_ilds = compute_per_user_ild(recommendations, item_to_idx, dist_matrix, k=k)
+    return float(np.mean(list(user_ilds.values()))) if user_ilds else 0.0
 
 
 def compute_gini_index(
@@ -56,6 +68,32 @@ def compute_gini_index(
     ranks = np.arange(1, n_items + 1, dtype=np.float64)
     gini = float(np.sum((2.0 * ranks - n_items - 1.0) * sorted_counts) / (n_items * total_recs))
     return gini
+
+
+def compute_within_genre_top5_share(
+    recommendations: dict[int, list[int]],
+    item_to_idx: dict[int, int],
+    l1_genres: np.ndarray,
+    k: int = 10,
+) -> float:
+    """Computes mean percentage of recommendation exposures within each genre captured by that genre's top-5 items."""
+    n_items, n_genres = l1_genres.shape
+    counts = np.zeros(n_items, dtype=np.int64)
+    for top_items in recommendations.values():
+        for item_id in top_items[:k]:
+            idx = item_to_idx.get(item_id)
+            if idx is not None:
+                counts[idx] += 1
+
+    genre_shares = []
+    for g in range(n_genres):
+        g_mask = l1_genres[:, g] > 0
+        g_counts = np.sort(counts[g_mask])[::-1]
+        total_g = int(g_counts.sum())
+        if total_g > 0:
+            genre_shares.append(float(g_counts[:5].sum() / total_g) * 100.0)
+
+    return float(np.mean(genre_shares)) if genre_shares else 0.0
 
 
 def build_user_historical_genre_distributions(

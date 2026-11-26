@@ -1,0 +1,7 @@
+Base model,Re-ranking method,Trade-off parameter,Lambda,Item distance,Precision@10,Recall@10,NDCG@10,Intra-list diversity (Cosine),Intra-list diversity (Native),Catalogue coverage,Gini,Calibration error,Seed
+Mult-VAE,MMR (top-100),lambda = 0.8,0.8,Cosine distance (18-dim L2 genres),0.0488,0.0746,0.0708,0.6798,0.6798,35.9,0.9282,0.6629,42
+Mult-VAE,MMR (top-100),lambda = 0.8,0.8,Jaccard distance (18-dim binary genres),0.0486,0.0736,0.0704,0.6849,0.7816,35.57,0.9293,0.6503,42
+Mult-VAE,MMR (top-100),lambda = 0.8,0.8,Normalized Manhattan / TV distance (18-dim L1 genres),0.0487,0.0741,0.0706,0.6798,0.7391,35.75,0.9286,0.6592,42
+Mult-VAE,MMR (top-100),lambda = 0.7,0.7,Cosine distance (18-dim L2 genres),0.0485,0.0734,0.07,0.723,0.723,35.36,0.9315,0.6065,42
+Mult-VAE,MMR (top-100),lambda = 0.7,0.7,Jaccard distance (18-dim binary genres),0.0486,0.0724,0.0701,0.7238,0.8149,34.97,0.9329,0.5996,42
+Mult-VAE,MMR (top-100),lambda = 0.7,0.7,Normalized Manhattan / TV distance (18-dim L1 genres),0.0483,0.0734,0.0701,0.7184,0.7729,35.05,0.9319,0.6086,42

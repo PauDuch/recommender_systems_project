@@ -1,0 +1,9 @@
+Configuration,Lambda,Popularity tie-break gamma,Within-genre top-5 share (%),Precision@10,Recall@10,NDCG@10,Intra-list diversity,Catalogue coverage,Gini,Calibration error,Seed
+Standard Genre MMR (lambda=1.0),1.0,0.0,46.63,0.0484,0.0741,0.0704,0.6141,36.9,0.9231,0.802,42
+Standard Genre MMR (lambda=0.8),0.8,0.0,48.4,0.0488,0.0746,0.0708,0.6798,35.9,0.9282,0.6629,42
+Standard Genre MMR (lambda=0.7),0.7,0.0,49.46,0.0485,0.0734,0.07,0.723,35.36,0.9315,0.6065,42
+Standard Genre MMR (lambda=0.5),0.5,0.0,50.78,0.0458,0.0678,0.0665,0.8201,33.61,0.9387,0.5664,42
+Standard Genre MMR (lambda=0.0),0.0,0.0,50.17,0.0378,0.054,0.0574,0.8892,32.14,0.9425,0.6168,42
+"Popularity-TieBreak MMR (lambda=0.7, gamma=0.15)",0.7,0.15,48.6,0.0478,0.0726,0.0691,0.7389,37.21,0.9276,0.5923,42
+"Popularity-TieBreak MMR (lambda=0.7, gamma=0.25)",0.7,0.25,47.8,0.0469,0.0719,0.0682,0.7529,39.17,0.9236,0.584,42
+"Popularity-TieBreak MMR (lambda=0.7, gamma=0.35)",0.7,0.35,46.75,0.0457,0.0705,0.0671,0.7705,41.13,0.9182,0.5764,42
